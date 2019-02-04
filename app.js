@@ -1,15 +1,23 @@
-let createError = require('http-errors');
-let express = require('express');
-let path = require('path');
-let cookieParser = require('cookie-parser');
-let logger = require('morgan');
-let sassMiddleware = require('node-sass-middleware');
-let winston = require('winston');
+const createError = require('http-errors');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
+const sassMiddleware = require('node-sass-middleware');
+const winston = require('winston');
+const passport = require('passport');
+const mongoose = require('mongoose');
+const FacebookStrategy = require("passport-facebook");
 
-let indexRouter = require('./routes/index');
-let usersRouter = require('./routes/users');
-let newsRouter = require('./routes/news');
-let news_json = require('./data/news');
+const url = 'mongodb://localhost:27017';
+const dbName = "news";
+
+mongoose.connect(`${url}/${dbName}`, {useNewUrlParser: true});
+
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
+const newsRouter = require('./routes/news');
+const news_json = require('./data/news');
 
 const loggerToFile = winston.createLogger({
     level: 'info',
@@ -36,6 +44,21 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 let app = express();
+
+passport.use(new FacebookStrategy({
+        clientID: FACEBOOK_APP_ID,
+        clientSecret: FACEBOOK_APP_SECRET,
+        callbackURL: "http://localhost:3000/auth/facebook/callback"
+    },
+    function(accessToken, refreshToken, profile, cb) {
+        User.findOrCreate({ facebookId: profile.id }, function (err, user) {
+            return cb(err, user);
+        });
+    }
+));
+
+app.post('/login', passport.authenticate('facebook', { successRedirect: '/',
+    failureRedirect: '/login' }));
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
